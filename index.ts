@@ -12,6 +12,9 @@ class ANN_Client_Options {
     apiBackOff = 5;
     // timeUntilTitleUpdate = 60 * 60 * 24;
 
+    cacheing = true;
+    // cacheTimeout = 0;
+
     constructor(ops: any) {
         Object.assign(this, ops);
         if(this.typeFilter !== null || this.typeFilter !== "anime" || this.typeFilter !=="manga")
@@ -30,8 +33,8 @@ class ANN_Client_Options {
 export class ANN_Client {
 
     private requestStack: BehaviorSubject = new BehavorialSubject(null);
-
-    private allTitles: {title: string} = {} as any;
+    private pageCache: {[url:string] : string} = {} as any;
+    // private allTitles: {title: string} = {} as any;
 
     constructor(private ops: ANN_Client_Options){
         if(!(ops instanceof ANN_Client_Options))
@@ -71,7 +74,18 @@ export class ANN_Client {
 
     private requestApi(url) {
         let ns = new Subject();
+
+        if(this.ops.cacheing && this.pageCache[url]) {
+            setTimeout(()=> {
+                ns.next(this.pageCache[url]);
+                ns.complete();
+            },0);
+
+            return ns;
+        }
+
         this.requestStack.next(ns);
+
         return ns
             .asObservable()
             .take(1)
@@ -84,11 +98,11 @@ export class ANN_Client {
             return Observable.create((obs)=> {
                 http.get(url, (res) => {
                     if (statusCode !== 200) {
-                        obs.error(error.message);
+                        obs.error('status code was '+statusCode);
                     } else {
                         debugger;//check res.data exists
-                        res.next(res.data);
-                        res.complete();
+                        obs.next(res.data);
+                        obs.complete();
                     }
                 }).on('error', (error) => {
                     obs.error(error.message);
@@ -98,7 +112,7 @@ export class ANN_Client {
     }
 
 
-    public series_findTitlesLike(title: string, theashold: number) {
+    public findTitlesLike(title: string, theashold: number) {
         let url = this.ops.urlDetails+'&title=~'+title.join('titles=~');
         this.requestApi(url)
             .map(xmlPage=>{
@@ -112,7 +126,7 @@ export class ANN_Client {
 
     }
 
-    parseAllSeries(xmlPage) {
+    private parseAllSeries(xmlPage) {
         let $ = cheerio.load(xmlPage, {
             normalizeWhitespace: true,
             xmlMode: true
@@ -134,28 +148,47 @@ export class ANN_Client {
 
             seriesModel.type = $(ele).attr('type').text();
             let occur = $(ele).attr('precision').text();
+
             seriesModel.occurrence = 0;
             if(typeof occur !== 'undefined')
                 occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
                 if(occur)
                     seriesModel.occurrence = occur;
 
-            seriesModel.occurrence =
             seriesModel.title= $(ele).find('info[type=Main title]').text();
+
             seriesModel.alternativeTitles = $(ele).find('info[type=Alternative title]')
                 .map(function(i, el) {
                     return $(this).text();
                 }).get();
+
             seriesModel.genre = $(ele).find('info[type=Alternative title]')
                 .each(function(i, el) {
                     let genre = $(this).text();
                     seriesModel[genre]=true;
                 });
+
             seriesModel.summary = $(ele).find('info[type=Plot Summary]').text();
+
             let date = $(ele).find('info[type=Vintage]').text();
             if(date)
                 seriesModel.dateReleased = new Date(date);
 
+            let episodes = [];
+            $(ele).find('episode').each(function(i, eleE){
+                $(this).find('title').each(function(i, eleT) {
+                    let episode = {};
+
+                    let baseOcc = $(eleE).attr('num');
+                    episode.occurrence = baseOcc + (1 - 1/i);
+
+                    episode.language = $(eleT).attr('lang');
+
+                    episode.title = $(eleT).text();
+
+                    episodes.push(episode);
+                });
+            });
 
             seriesModels.push(seriesModel);
         });
