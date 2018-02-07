@@ -1,7 +1,8 @@
 
 
-import * as $ from "cheerio";
+import * as cheerio from "cheerio";
 import {Subscription, Observable, Subject, BehaviorSubject} from "rxjs";
+import * as http from 'http';
 
 class ANN_Client_Options {
     reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
@@ -32,11 +33,11 @@ class ANN_Client_Options {
 
 export class ANN_Client {
 
-    private requestStack: BehaviorSubject = new BehavorialSubject(null);
+    private requestStack = new Subject<Subject<string>>();
     private pageCache: {[url:string] : string} = {} as any;
     // private allTitles: {title: string} = {} as any;
 
-    constructor(private ops: ANN_Client_Options){
+    constructor(private ops: any){
         if(!(ops instanceof ANN_Client_Options))
             this.ops = new ANN_Client_Options(ops);
 
@@ -45,12 +46,12 @@ export class ANN_Client {
     }
 
     private initRequestStack(){
-        Observable.concat(
+        Observable.zip(
             Observable.timer(0,this.ops.apiBackOff * 1000),
             this.requestStack)
-        .subscribe((res: [Subject, number])=>{
+        .subscribe((res: [number, Subject<string>])=>{
             if(res && res.length)
-                res[0].next(null);
+                res[1].next(null);
         });
     }
 
@@ -72,8 +73,8 @@ export class ANN_Client {
     //
     // }
 
-    private requestApi(url) {
-        let ns = new Subject();
+    private requestApi(url): Observable<string> {
+        let ns = new Subject<string>();
 
         if(this.ops.cacheing && this.pageCache[url]) {
             setTimeout(()=> {
@@ -94,15 +95,23 @@ export class ANN_Client {
             })
             .switch();
 
-        function _createObsHttpGet(url){
+        function _createObsHttpGet(url): Observable<string>{
             return Observable.create((obs)=> {
-                http.get(url, (res) => {
-                    if (statusCode !== 200) {
-                        obs.error('status code was '+statusCode);
+                http.get(url, (res: http.IncomingMessage) => {
+                    if (res.statusCode !== 200) {
+                        obs.error('status code was '+res.statusCode);
                     } else {
-                        debugger;//check res.data exists
-                        obs.next(res.data);
-                        obs.complete();
+                        res.setEncoding('utf8');
+                        let rawData = '';
+                        res.on('data', (chunk) => { rawData += chunk; });
+                        res.on('end', () => {
+                            try {
+                                obs.next(rawData);
+                                obs.complete();
+                            } catch (e) {
+                                obs.error(e.message);
+                            }
+                        });
                     }
                 }).on('error', (error) => {
                     obs.error(error.message);
@@ -112,13 +121,16 @@ export class ANN_Client {
     }
 
 
-    public findTitlesLike(title: string, theashold: number) {
-        let url = this.ops.urlDetails+'&title=~'+title.join('titles=~');
-        this.requestApi(url)
+    public findTitlesLike(titles: string[], theashold: number = 0.80): Observable<any[]> {
+        let url = this.ops.urlDetails+'&title=~'+titles.join('titles=~');
+        return this.requestApi(url)
             .map(xmlPage=>{
                 let seriesModels = this.parseAllSeries(xmlPage);
                 let rm = seriesModels.filter(mod=>{
-                    let probability = this.similiarity(mod.title, title);
+                    let probability = titles.map(title=>{
+                        return {title: title, similarity: this.similarity(mod.title, title)};
+                    }).sort()[0] || 0;
+
                     return probability >= theashold;
                 });
                 return rm;
@@ -133,58 +145,56 @@ export class ANN_Client {
         });
 
         let seriesModels = [];
-        $('ann').children().each(function(i, ele){
+        $('ann').children().each(function (i, ele) {
             debugger; //check ele to find its type
-            if(this.ops.typeFilter && this.ops.typeFilter !== ele)
-                continue;
+            if (this.ops.typeFilter && this.ops.typeFilter !== ele)
+                return;
 
-            let seriesModel = {};
+            let seriesModel = {} as any;
 
             let id = $(ele).attr('id').text();
             debugger;//need to verify this //looking for anime or manga
             let nodeType = ele.nodeType;
-            if(seriesModel.nodeType && id)
-                seriesModel._id = this.ops.detailsUrl+seriesModel.type+"="+id;
+            if (seriesModel.nodeType && id)
+                seriesModel._id = this.ops.detailsUrl + seriesModel.type + "=" + id;
 
             seriesModel.type = $(ele).attr('type').text();
             let occur = $(ele).attr('precision').text();
 
             seriesModel.occurrence = 0;
-            if(typeof occur !== 'undefined')
+            if (typeof occur !== 'undefined')
                 occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
-                if(occur)
-                    seriesModel.occurrence = occur;
+            if (occur)
+                seriesModel.occurrence = occur;
 
-            seriesModel.title= $(ele).find('info[type=Main title]').text();
+            seriesModel.title = $(ele).find('info[type="Main title"]').text();
 
-            seriesModel.alternativeTitles = $(ele).find('info[type=Alternative title]')
-                .map(function(i, el) {
+            seriesModel.alternativeTitles = $(ele).find('info[type="Alternative title"]')
+                .map(function (i, el) {
                     return $(this).text();
                 }).get();
 
-            seriesModel.genre = $(ele).find('info[type=Alternative title]')
-                .each(function(i, el) {
+            seriesModel.genre = $(ele).find('info[type="Alternative title"]')
+                .each(function (i, el) {
                     let genre = $(this).text();
-                    seriesModel[genre]=true;
+                    seriesModel[genre] = true;
                 });
 
-            seriesModel.summary = $(ele).find('info[type=Plot Summary]').text();
+            seriesModel.summary = $(ele).find('info[type="Plot Summary"]').text();
 
-            let date = $(ele).find('info[type=Vintage]').text();
-            if(date)
+            let date = $(ele).find('info[type="Vintage"]').text();
+            if (date)
                 seriesModel.dateReleased = new Date(date);
 
             let episodes = [];
-            $(ele).find('episode').each(function(i, eleE){
-                $(this).find('title').each(function(i, eleT) {
-                    let episode = {};
-
-                    let baseOcc = $(eleE).attr('num');
-                    episode.occurrence = baseOcc + (1 - 1/i);
-
-                    episode.language = $(eleT).attr('lang');
-
-                    episode.title = $(eleT).text();
+            $(ele).find('episode').each(function (i, eleE) {
+                $(this).find('title').each(function (i, eleT) {
+                    let baseOcc = +$(eleE).attr('num');
+                    let episode = {
+                        occurrence:  baseOcc && baseOcc + (1 - 1 / i) || -1,
+                        language: $(eleT).attr('lang') || "",
+                        title: $(eleT).text() || "",
+                    };
 
                     episodes.push(episode);
                 });
@@ -194,8 +204,8 @@ export class ANN_Client {
         });
 
         return seriesModels;
-    }
 
+    }
 
 
 
@@ -217,7 +227,7 @@ export class ANN_Client {
         }
 
         var longerLength = longer.length;
-        let distance = (longerLength - editDistance(longer, shorter)) / parseFloat(longerLength);
+        let distance = (longerLength - this.editDistance(longer, shorter)) / parseFloat(longerLength);
         let add = (longer.indexOf(shorter) != -1? distance+0.70 : distance);
         return (add > 1? 1: add);
     }

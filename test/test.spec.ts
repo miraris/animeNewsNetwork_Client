@@ -1,5 +1,6 @@
 
 import {ANN_Client} from '../index';
+import {Observable} from "rxjs";
 
 describe('Testing the ANN api client', function () {
   this.timeout(15000);
@@ -10,14 +11,14 @@ describe('Testing the ANN api client', function () {
     it('Run two requests immediately that are called 10 seconds apart', function (done) {
       let ops = {apiBackOff: 10, caching:false};
       let ann = new ANN_Client(ops);
-      let ar = ann.findTitlesLike('good');
-      let br = ann.findTitlesLike('bears');
+      let ar = ann.findTitlesLike(['good']);
+      let br = ann.findTitlesLike(['bears']);
 
       let start = Date.now();
-      ar.combine(br)
+      Observable.forkJoin(ar,br)
         .subscribe(()=>{
           let end = Date.now();
-          if(end - start > 10)
+          if(end - start < 10)
             throw "the api backoff did not wait 10 seconds";
 
           done();
