@@ -2,11 +2,12 @@
 
 import * as cheerio from "cheerio";
 import {Subscription, Observable, Subject, BehaviorSubject} from "rxjs";
+import * as https from 'https';
 import * as http from 'http';
 
 class ANN_Client_Options {
     reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
-    detailsUrl = 'http://cdn.animenewsnetwork.com/encyclopedia/api.xml?';
+    detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia/api.xml?';
 
     typeFilter = null;
 
@@ -18,16 +19,23 @@ class ANN_Client_Options {
 
     constructor(ops: any) {
         Object.assign(this, ops);
-        if(this.typeFilter !== null || this.typeFilter !== "anime" || this.typeFilter !=="manga")
+        if(!(this.typeFilter === null || this.typeFilter === "anime" || this.typeFilter === "manga")) {
             throw new Error("not a correct type, anime, null, or manga must be given");
+        }
     }
 
     get urlReports() {
-        return this.reportsUrl + "type=" + this.typeFilter;
+        let url = this.reportsUrl;
+        if(this.typeFilter)
+            url += "type=" + this.typeFilter + '&';
+        return url;
     }
 
     get urlDetails() {
-        return this.detailsUrl + "type=" + this.typeFilter;
+        let url = this.detailsUrl;
+        if(this.typeFilter)
+            url += "type=" + this.typeFilter + '&';
+        return url;
     }
 }
 
@@ -97,7 +105,7 @@ export class ANN_Client {
 
         function _createObsHttpGet(url): Observable<string>{
             return Observable.create((obs)=> {
-                http.get(url, (res: http.IncomingMessage) => {
+                https.get(url, (res: http.IncomingMessage) => {
                     if (res.statusCode !== 200) {
                         obs.error('status code was '+res.statusCode);
                     } else {
@@ -122,16 +130,18 @@ export class ANN_Client {
 
 
     public findTitlesLike(titles: string[], theashold: number = 0.80): Observable<any[]> {
-        let url = this.ops.urlDetails+'&title=~'+titles.join('titles=~');
+        let url = this.ops.urlDetails+'title=~'+titles.join('titles=~');
         return this.requestApi(url)
             .map(xmlPage=>{
                 let seriesModels = this.parseAllSeries(xmlPage);
                 let rm = seriesModels.filter(mod=>{
-                    let probability = titles.map(title=>{
+                    let probability: any = titles.map(title=>{
                         return {title: title, similarity: this.similarity(mod.title, title)};
-                    }).sort()[0] || 0;
+                    }).sort((a,b)=>{
+                        return a.similarity - b.similarity;
+                    })[0] || {similarity: 0};
 
-                    return probability >= theashold;
+                    return probability.similarity >= theashold;
                 });
                 return rm;
             })
@@ -145,58 +155,77 @@ export class ANN_Client {
         });
 
         let seriesModels = [];
+        let thiss = this;
         $('ann').children().each(function (i, ele) {
-            debugger; //check ele to find its type
-            if (this.ops.typeFilter && this.ops.typeFilter !== ele)
+
+            if (thiss.ops.typeFilter && thiss.ops.typeFilter === ele.name)
                 return;
 
             let seriesModel = {} as any;
 
-            let id = $(ele).attr('id').text();
-            debugger;//need to verify this //looking for anime or manga
-            let nodeType = ele.nodeType;
-            if (seriesModel.nodeType && id)
-                seriesModel._id = this.ops.detailsUrl + seriesModel.type + "=" + id;
+            let id = this.attribs['id'];
 
-            seriesModel.type = $(ele).attr('type').text();
-            let occur = $(ele).attr('precision').text();
+            seriesModel.type = ele.name;
 
-            seriesModel.occurrence = 0;
+            if (seriesModel.type && id)
+                seriesModel._id = thiss.ops.detailsUrl + seriesModel.type + "=" + id;
+
+            let occur = this.attribs['precision'];
             if (typeof occur !== 'undefined')
                 occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
-            if (occur)
-                seriesModel.occurrence = occur;
+            seriesModel.occurrence = occur || 0;
 
             seriesModel.title = $(ele).find('info[type="Main title"]').text();
 
-            seriesModel.alternativeTitles = $(ele).find('info[type="Alternative title"]')
+            let altT = $(ele).find('info[type="Alternative title"]')
                 .map(function (i, el) {
-                    return $(this).text();
+                    return $(this).text().toLocaleLowerCase();
                 }).get();
+            if(altT && altT.length)
+                seriesModel.alternativeTitles = altT;
 
-            seriesModel.genre = $(ele).find('info[type="Alternative title"]')
+            $(ele).find('info[type="Genres"]')
                 .each(function (i, el) {
-                    let genre = $(this).text();
+                    let genre = $(this).text().toLowerCase();
                     seriesModel[genre] = true;
                 });
 
-            seriesModel.summary = $(ele).find('info[type="Plot Summary"]').text();
+            let summary = $(ele).find('info[type="Plot Summary"]').text();
+            if(summary)
+                seriesModel.summary = summary;
 
-            let date = $(ele).find('info[type="Vintage"]').text();
-            if (date)
-                seriesModel.dateReleased = new Date(date);
+            let date = $(ele).find('info[type="Vintage"]')
+                .map(function (i, el) {
+                    return $(this).text();
+                })
+                .get()
+                .reduce((p,datesS)=>{
+                    let splitDates = datesS.split(" to ");
+                    return p.concat(splitDates);
+                }, [])
+                .map(da=>{
+                    let clean = da.match(/(?:[0-9]{0,4})?(?:-[0-9]{0,2})?(?:-[0-9]{0,2})?/);
+                    return clean && clean[0] && new Date(clean[0]) || null;
+                })
+                .sort(function(a,b){
+                    return a > b;
+                });
 
-            let episodes = [];
+            if (date.length && date[0])
+                seriesModel.dateReleased = date[0];
+            if (date.length && date[date.length-1])
+                seriesModel.dateEnded = date[date.length-1];
+
             $(ele).find('episode').each(function (i, eleE) {
                 $(this).find('title').each(function (i, eleT) {
                     let baseOcc = +$(eleE).attr('num');
                     let episode = {
-                        occurrence:  baseOcc && baseOcc + (1 - 1 / i) || -1,
+                        occurrence:  baseOcc && baseOcc + (1 - 1 / (i+1)) || -1,
                         language: $(eleT).attr('lang') || "",
                         title: $(eleT).text() || "",
                     };
 
-                    episodes.push(episode);
+                    (seriesModel.episodes || []).push(episode);
                 });
             });
 
