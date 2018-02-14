@@ -158,7 +158,10 @@ export class ANN_Client {
         let thiss = this;
         $('ann').children().each(function (i, ele) {
 
-            if (thiss.ops.typeFilter && thiss.ops.typeFilter === ele.name)
+            if (!ele.name ||
+                ele.name === 'warning' ||
+                thiss.ops.typeFilter &&
+                thiss.ops.typeFilter !== ele.name)
                 return;
 
             let seriesModel = {} as any;
