@@ -8,9 +8,7 @@ A javascript parser for Anime News Network, it uses cheerio and is meant to run 
 3) RxJs
 
 # ANN_Client API
-```typescript
-let ar = ann.findTitlesLike(['good']);
-```
+findTitlesLike - finds all titles similar to the list of titles given.
 
 # Example
 ```typescript
