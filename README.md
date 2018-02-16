@@ -5,6 +5,7 @@ A javascript parser for Anime News Network, it uses cheerio and is meant to run 
 # Dependencies
 1) Cheerio
 2) NodeJs
+3) RxJs
 
 # ANN_Client API
 ```typescript
