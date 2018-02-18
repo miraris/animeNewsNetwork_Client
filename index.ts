@@ -1,7 +1,7 @@
 
 
 import * as cheerio from "cheerio";
-import {Subscription, Observable, Subject, BehaviorSubject} from "rxjs";
+import {Observable, Subject, BehaviorSubject} from "rxjs";
 import * as https from 'https';
 import * as http from 'http';
 
@@ -41,7 +41,7 @@ class ANN_Client_Options {
 
 export class ANN_Client {
 
-    private requestStack = new Subject<Subject<string>>();
+    private requestStack = new Subject<Subject<boolean>>();
     private pageCache: {[url:string] : string} = {} as any;
     // private allTitles: {title: string} = {} as any;
 
@@ -57,10 +57,9 @@ export class ANN_Client {
         Observable.zip(
             Observable.timer(0,this.ops.apiBackOff * 1000),
             this.requestStack)
-        .subscribe((res: [number, Subject<string>])=>{
-            if(res && res.length)
-                res[1].next(null);
-        });
+            .subscribe((res: [number, Subject<boolean>])=>{
+                res[1].next(true);
+            });
     }
 
     //left for new series added, usage
@@ -82,36 +81,38 @@ export class ANN_Client {
     // }
 
     private requestApi(url): Observable<string> {
-        let ns = new Subject<string>();
 
         if(this.ops.cacheing && this.pageCache[url]) {
-            setTimeout(()=> {
-                ns.next(this.pageCache[url]);
-                ns.complete();
-            },0);
+            return Observable.of(this.pageCache[url])
+        } else {
 
-            return ns;
+            let ns = new BehaviorSubject<boolean>(false);
+
+            this.requestStack.next(ns);
+
+            return ns
+                .asObservable()
+                .filter(val=> {
+                    return !!val
+                })
+                .take(1)
+                .map((v: boolean): Observable<string> => {
+                    return _createObsHttpGet(url);
+                })
+                .switch();
         }
 
-        this.requestStack.next(ns);
-
-        return ns
-            .asObservable()
-            .take(1)
-            .map(v=> {
-                return _createObsHttpGet(url);
-            })
-            .switch();
-
-        function _createObsHttpGet(url): Observable<string>{
+        function _createObsHttpGet(url): Observable<string> {
             return Observable.create((obs)=> {
                 https.get(url, (res: http.IncomingMessage) => {
                     if (res.statusCode !== 200) {
-                        obs.error('status code was '+res.statusCode);
+                        obs.error('status code was ' + res.statusCode);
                     } else {
                         res.setEncoding('utf8');
                         let rawData = '';
-                        res.on('data', (chunk) => { rawData += chunk; });
+                        res.on('data', (chunk) => {
+                            rawData += chunk;
+                        });
                         res.on('end', () => {
                             try {
                                 obs.next(rawData);
@@ -136,10 +137,10 @@ export class ANN_Client {
                 let seriesModels = this.parseAllSeries(xmlPage);
                 let rm = seriesModels.filter(mod=>{
                     let probability: any = titles.map(title=>{
-                        return {title: title, similarity: this.similarity(mod.title, title)};
-                    }).sort((a,b)=>{
-                        return a.similarity - b.similarity;
-                    })[0] || {similarity: 0};
+                            return {title: title, similarity: this.similarity(mod.title, title)};
+                        }).sort((a,b)=>{
+                            return a.similarity - b.similarity;
+                        })[0] || {similarity: 0};
 
                     return probability.similarity >= theashold;
                 });

@@ -53,8 +53,7 @@ var ANN_Client = /** @class */ (function () {
     ANN_Client.prototype.initRequestStack = function () {
         rxjs_1.Observable.zip(rxjs_1.Observable.timer(0, this.ops.apiBackOff * 1000), this.requestStack)
             .subscribe(function (res) {
-            if (res && res.length)
-                res[1].next(null);
+            res[1].next(true);
         });
     };
     //left for new series added, usage
@@ -75,23 +74,23 @@ var ANN_Client = /** @class */ (function () {
     //
     // }
     ANN_Client.prototype.requestApi = function (url) {
-        var _this = this;
-        var ns = new rxjs_1.Subject();
         if (this.ops.cacheing && this.pageCache[url]) {
-            setTimeout(function () {
-                ns.next(_this.pageCache[url]);
-                ns.complete();
-            }, 0);
-            return ns;
+            return rxjs_1.Observable.of(this.pageCache[url]);
         }
-        this.requestStack.next(ns);
-        return ns
-            .asObservable()
-            .take(1)
-            .map(function (v) {
-            return _createObsHttpGet(url);
-        })
-            .switch();
+        else {
+            var ns = new rxjs_1.BehaviorSubject(false);
+            this.requestStack.next(ns);
+            return ns
+                .asObservable()
+                .filter(function (val) {
+                return !!val;
+            })
+                .take(1)
+                .map(function (v) {
+                return _createObsHttpGet(url);
+            })
+                .switch();
+        }
         function _createObsHttpGet(url) {
             return rxjs_1.Observable.create(function (obs) {
                 https.get(url, function (res) {
@@ -101,7 +100,9 @@ var ANN_Client = /** @class */ (function () {
                     else {
                         res.setEncoding('utf8');
                         var rawData_1 = '';
-                        res.on('data', function (chunk) { rawData_1 += chunk; });
+                        res.on('data', function (chunk) {
+                            rawData_1 += chunk;
+                        });
                         res.on('end', function () {
                             try {
                                 obs.next(rawData_1);
