@@ -9,10 +9,11 @@ describe('Testing the ANN api client', function () {
 
   describe('This tests the API backoff', function () {
     it('Run two requests immediately that are called 10 seconds apart', function (done) {
-      let ops = {apiBackOff: 10, caching:false};
-      let ann = new ANN_Client(ops);
-      let ar = ann.findTitlesLike(['good']);
-      let br = ann.findTitlesLike(['bears']);
+      let ops2 = {apiBackOff: 10, caching:false};
+      let annA = new ANN_Client(ops2);
+      let ar = annA.findTitlesLike(['good']);
+      let br = annA.findTitlesLike(['bears']);
+
 
       let start = Date.now();
       Observable.forkJoin(ar,br)
@@ -22,12 +23,14 @@ describe('Testing the ANN api client', function () {
           let bears = gb[1];
           if(good && bears && good.length === bears.length)
             throw "results were the same";
-          if(end - start < 10)
+          if(end - start < (10 * 1000))
             throw "the api backoff did not wait 10 seconds";
 
           done();
+        }, err=>{
+            throw err;
         });
-    });
+    }.bind(null));
   });
 
 
@@ -36,7 +39,6 @@ describe('Testing the ANN api client', function () {
         let ops = {apiBackOff: 10, caching:false, typeFilter:'anime'};
         let ann = new ANN_Client(ops);
         ann.findTitlesLike(['YU-NO: A girl who chants love at the bound of this world.'])
-            .take(1)
             .subscribe((resp)=>{
                 let res = resp[0];
                 if(res.alternativeTitles[0] !== "kono yo no hate de koi o utau shōjo yu-no")
@@ -57,6 +59,8 @@ describe('Testing the ANN api client', function () {
                     throw new Error('_id was incorrect');
 
                 done();
+            }, err=>{
+                throw err;
             });
     });
   });
