@@ -5,11 +5,7 @@ A javascript parser for Anime News Network, it uses cheerio and is meant to run 
 # Dependencies
 1) Cheerio
 2) NodeJs
-
-# ANN_Client API
-```typescript
-let ar = ann.findTitlesLike(['good']);
-```
+3) RxJs
 
 # Example
 ```typescript
@@ -20,6 +16,7 @@ let ops = {apiBackOff: 10, caching:false};
       
       
 # Classes
+// this is the main class
 ```typescript
 export class ANN_Client {
     
@@ -28,6 +25,7 @@ export class ANN_Client {
     //list of titles to, I suggest doing one at at time thou,
     //threashold cutoff, if the percent between the searched title and the title found 
     // is not greater then the threashold then do not return the title.
+    // this paramter is optional and if not given defaults to 80%
     findTitlesLike(titles: string[], theashold?: number): Observable<SeriesModel[]>; 
 }
 
