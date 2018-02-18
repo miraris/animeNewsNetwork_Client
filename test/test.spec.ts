@@ -36,7 +36,7 @@ describe('Testing the ANN api client', function () {
 
   describe('Test that the api has not changed', function () {
     it('it should return expected data for given title', function (done) {
-        let ops = {apiBackOff: 10, caching:false, typeFilter:'anime'};
+        let ops = {apiBackOff: 10, caching:false, groupTypeFilter:'anime'};
         let ann = new ANN_Client(ops);
         ann.findTitlesLike(['YU-NO: A girl who chants love at the bound of this world.'])
             .subscribe((resp)=>{
@@ -53,8 +53,12 @@ describe('Testing the ANN api client', function () {
                     throw new Error('occurrence was incorrect');
                 if(res.title !== 'YU-NO: A girl who chants love at the bound of this world.')
                     throw new Error('title was incorrect');
-                if(res.type !== 'anime')
+                if(res.groupType !== 'anime')
                     throw new Error('title was incorrect');
+                if(res.type !== 'TV')
+                    throw new Error('type was incorrect');
+                if(res.precision !== 'TV')
+                    throw new Error('precision was incorrect');
                 if(res._id !== 'https://cdn.animenewsnetwork.com/encyclopedia/api.xml?anime=20479')
                     throw new Error('_id was incorrect');
 

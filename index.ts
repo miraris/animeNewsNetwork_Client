@@ -9,7 +9,7 @@ class ANN_Client_Options {
     reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
     detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia/api.xml?';
 
-    typeFilter = null;
+    groupTypeFilter = null;
 
     apiBackOff = 5;
     // timeUntilTitleUpdate = 60 * 60 * 24;
@@ -19,22 +19,22 @@ class ANN_Client_Options {
 
     constructor(ops: any) {
         Object.assign(this, ops);
-        if(!(this.typeFilter === null || this.typeFilter === "anime" || this.typeFilter === "manga")) {
+        if(!(this.groupTypeFilter === null || this.groupTypeFilter === "anime" || this.groupTypeFilter === "manga")) {
             throw new Error("not a correct type, anime, null, or manga must be given");
         }
     }
 
     get urlReports() {
         let url = this.reportsUrl;
-        if(this.typeFilter)
-            url += "type=" + this.typeFilter + '&';
+        if(this.groupTypeFilter)
+            url += "type=" + this.groupTypeFilter + '&';
         return url;
     }
 
     get urlDetails() {
         let url = this.detailsUrl;
-        if(this.typeFilter)
-            url += "type=" + this.typeFilter + '&';
+        if(this.groupTypeFilter)
+            url += "type=" + this.groupTypeFilter + '&';
         return url;
     }
 }
@@ -161,18 +161,21 @@ export class ANN_Client {
 
             if (!ele.name ||
                 ele.name === 'warning' ||
-                thiss.ops.typeFilter &&
-                thiss.ops.typeFilter !== ele.name)
+                thiss.ops.groupTypeFilter &&
+                thiss.ops.groupTypeFilter !== ele.name)
                 return;
 
             let seriesModel = {} as any;
 
             let id = this.attribs['id'];
 
-            seriesModel.type = ele.name;
+            seriesModel.groupType = ele.name;
 
-            if (seriesModel.type && id)
-                seriesModel._id = thiss.ops.detailsUrl + seriesModel.type + "=" + id;
+            if (seriesModel.groupType && id)
+                seriesModel._id = thiss.ops.detailsUrl + seriesModel.groupType + "=" + id;
+
+            seriesModel.type = this.attribs['type'];
+            seriesModel.precision = this.attribs['precision'];
 
             let occur = this.attribs['precision'];
             if (typeof occur !== 'undefined')

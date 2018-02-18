@@ -8,20 +8,20 @@ var ANN_Client_Options = /** @class */ (function () {
     function ANN_Client_Options(ops) {
         this.reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
         this.detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia/api.xml?';
-        this.typeFilter = null;
+        this.groupTypeFilter = null;
         this.apiBackOff = 5;
         // timeUntilTitleUpdate = 60 * 60 * 24;
         this.cacheing = true;
         Object.assign(this, ops);
-        if (!(this.typeFilter === null || this.typeFilter === "anime" || this.typeFilter === "manga")) {
+        if (!(this.groupTypeFilter === null || this.groupTypeFilter === "anime" || this.groupTypeFilter === "manga")) {
             throw new Error("not a correct type, anime, null, or manga must be given");
         }
     }
     Object.defineProperty(ANN_Client_Options.prototype, "urlReports", {
         get: function () {
             var url = this.reportsUrl;
-            if (this.typeFilter)
-                url += "type=" + this.typeFilter + '&';
+            if (this.groupTypeFilter)
+                url += "type=" + this.groupTypeFilter + '&';
             return url;
         },
         enumerable: true,
@@ -30,8 +30,8 @@ var ANN_Client_Options = /** @class */ (function () {
     Object.defineProperty(ANN_Client_Options.prototype, "urlDetails", {
         get: function () {
             var url = this.detailsUrl;
-            if (this.typeFilter)
-                url += "type=" + this.typeFilter + '&';
+            if (this.groupTypeFilter)
+                url += "type=" + this.groupTypeFilter + '&';
             return url;
         },
         enumerable: true,
@@ -147,14 +147,16 @@ var ANN_Client = /** @class */ (function () {
         $('ann').children().each(function (i, ele) {
             if (!ele.name ||
                 ele.name === 'warning' ||
-                thiss.ops.typeFilter &&
-                    thiss.ops.typeFilter !== ele.name)
+                thiss.ops.groupTypeFilter &&
+                    thiss.ops.groupTypeFilter !== ele.name)
                 return;
             var seriesModel = {};
             var id = this.attribs['id'];
-            seriesModel.type = ele.name;
-            if (seriesModel.type && id)
-                seriesModel._id = thiss.ops.detailsUrl + seriesModel.type + "=" + id;
+            seriesModel.groupType = ele.name;
+            if (seriesModel.groupType && id)
+                seriesModel._id = thiss.ops.detailsUrl + seriesModel.groupType + "=" + id;
+            seriesModel.type = this.attribs['type'];
+            seriesModel.precision = this.attribs['precision'];
             var occur = this.attribs['precision'];
             if (typeof occur !== 'undefined')
                 occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
