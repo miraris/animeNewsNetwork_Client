@@ -40,7 +40,7 @@ describe('Testing the ANN api client', function () {
         let ann = new ANN_Client(ops);
         ann.findTitlesLike(['YU-NO: A girl who chants love at the bound of this world.'])
             .subscribe((resp)=>{
-                let res = resp[0];
+                let res= resp[0];
                 if(res.alternativeTitles[0] !== "kono yo no hate de koi o utau shōjo yu-no")
                     throw new Error('alt title 0 was incorrect');
                 if(res.alternativeTitles[1] !== "この世の果てで恋を唄う少女yu-no")

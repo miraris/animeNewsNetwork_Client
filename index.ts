@@ -80,10 +80,10 @@ export class ANN_Client {
     //
     // }
 
-    private requestApi(url): Observable<string> {
+    private requestApi(url): Observable<{status: number, data:string}> {
 
         if(this.ops.cacheing && this.pageCache[url]) {
-            return Observable.of(this.pageCache[url])
+            return Observable.of({status: 200, data:this.pageCache[url]})
         } else {
 
             let ns = new BehaviorSubject<boolean>(false);
@@ -96,17 +96,18 @@ export class ANN_Client {
                     return !!val
                 })
                 .take(1)
-                .map((v: boolean): Observable<string> => {
+                .map((v: boolean): Observable<{status: number, data:string}> => {
                     return _createObsHttpGet(url);
                 })
                 .switch();
         }
 
-        function _createObsHttpGet(url): Observable<string> {
+        function _createObsHttpGet(url): Observable<{status: number, data:string}> {
             return Observable.create((obs)=> {
                 https.get(url, (res: http.IncomingMessage) => {
                     if (res.statusCode !== 200) {
-                        obs.error('status code was ' + res.statusCode);
+                        obs.next({status:res.statusCode, data:'not a 200 response'});
+                        obs.complete();
                     } else {
                         res.setEncoding('utf8');
                         let rawData = '';
@@ -114,16 +115,13 @@ export class ANN_Client {
                             rawData += chunk;
                         });
                         res.on('end', () => {
-                            try {
-                                obs.next(rawData);
-                                obs.complete();
-                            } catch (e) {
-                                obs.error(e.message);
-                            }
+                            obs.next({status:res.statusCode, data:rawData});
+                            obs.complete();
                         });
                     }
                 }).on('error', (error) => {
-                    obs.error(error.message);
+                    obs.next({status:500, data:error.message});
+                    obs.complete();
                 })
             })
         }
@@ -134,17 +132,20 @@ export class ANN_Client {
         let url = this.ops.urlDetails+'title=~'+titles.join('titles=~');
         return this.requestApi(url)
             .map(xmlPage=>{
-                let seriesModels = this.parseAllSeries(xmlPage);
-                let rm = seriesModels.filter(mod=>{
-                    let probability: any = titles.map(title=>{
-                            return {title: title, similarity: this.similarity(mod.title, title)};
-                        }).sort((a,b)=>{
-                            return a.similarity - b.similarity;
-                        })[0] || {similarity: 0};
+                if(xmlPage.status === 200) {
+                    let seriesModels = this.parseAllSeries(xmlPage.data);
+                    let rm = seriesModels.filter(mod=> {
+                        let probability: any = titles.map(title=> {
+                                return {title: title, similarity: this.similarity(mod.title, title)};
+                            }).sort((a, b)=> {
+                                return a.similarity - b.similarity;
+                            })[0] || {similarity: 0};
 
-                    return probability.similarity >= theashold;
-                });
-                return rm;
+                        return probability.similarity >= theashold;
+                    });
+                    return rm;
+                }
+                return [];
             })
 
     }

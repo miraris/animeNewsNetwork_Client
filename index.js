@@ -75,7 +75,7 @@ var ANN_Client = /** @class */ (function () {
     // }
     ANN_Client.prototype.requestApi = function (url) {
         if (this.ops.cacheing && this.pageCache[url]) {
-            return rxjs_1.Observable.of(this.pageCache[url]);
+            return rxjs_1.Observable.of({ status: 200, data: this.pageCache[url] });
         }
         else {
             var ns = new rxjs_1.BehaviorSubject(false);
@@ -95,7 +95,8 @@ var ANN_Client = /** @class */ (function () {
             return rxjs_1.Observable.create(function (obs) {
                 https.get(url, function (res) {
                     if (res.statusCode !== 200) {
-                        obs.error('status code was ' + res.statusCode);
+                        obs.next({ status: res.statusCode, data: 'not a 200 response' });
+                        obs.complete();
                     }
                     else {
                         res.setEncoding('utf8');
@@ -104,17 +105,13 @@ var ANN_Client = /** @class */ (function () {
                             rawData_1 += chunk;
                         });
                         res.on('end', function () {
-                            try {
-                                obs.next(rawData_1);
-                                obs.complete();
-                            }
-                            catch (e) {
-                                obs.error(e.message);
-                            }
+                            obs.next({ status: res.statusCode, data: rawData_1 });
+                            obs.complete();
                         });
                     }
                 }).on('error', function (error) {
-                    obs.error(error.message);
+                    obs.next({ status: 500, data: error.message });
+                    obs.complete();
                 });
             });
         }
@@ -125,16 +122,19 @@ var ANN_Client = /** @class */ (function () {
         var url = this.ops.urlDetails + 'title=~' + titles.join('titles=~');
         return this.requestApi(url)
             .map(function (xmlPage) {
-            var seriesModels = _this.parseAllSeries(xmlPage);
-            var rm = seriesModels.filter(function (mod) {
-                var probability = titles.map(function (title) {
-                    return { title: title, similarity: _this.similarity(mod.title, title) };
-                }).sort(function (a, b) {
-                    return a.similarity - b.similarity;
-                })[0] || { similarity: 0 };
-                return probability.similarity >= theashold;
-            });
-            return rm;
+            if (xmlPage.status === 200) {
+                var seriesModels = _this.parseAllSeries(xmlPage.data);
+                var rm = seriesModels.filter(function (mod) {
+                    var probability = titles.map(function (title) {
+                        return { title: title, similarity: _this.similarity(mod.title, title) };
+                    }).sort(function (a, b) {
+                        return a.similarity - b.similarity;
+                    })[0] || { similarity: 0 };
+                    return probability.similarity >= theashold;
+                });
+                return rm;
+            }
+            return [];
         });
     };
     ANN_Client.prototype.parseAllSeries = function (xmlPage) {
