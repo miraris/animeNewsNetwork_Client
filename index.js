@@ -160,7 +160,7 @@ var ANN_Client = /** @class */ (function () {
             var occur = this.attribs['precision'];
             if (typeof occur !== 'undefined')
                 occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
-            seriesModel.occurrence = occur || 0;
+            seriesModel.occurrence = occur || 1;
             seriesModel.title = $(ele).find('info[type="Main title"]').text();
             var altT = $(ele).find('info[type="Alternative title"]')
                 .map(function (i, el) {

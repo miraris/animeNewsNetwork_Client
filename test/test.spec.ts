@@ -49,7 +49,7 @@ describe('Testing the ANN api client', function () {
                     throw new Error('dateEnded was incorrect');
                 if(res.dateReleased.getDate() !== 31)
                     throw new Error('dateReleased was incorrect');
-                if(res.occurrence !== 0)
+                if(res.occurrence !== 1)
                     throw new Error('occurrence was incorrect');
                 if(res.title !== 'YU-NO: A girl who chants love at the bound of this world.')
                     throw new Error('title was incorrect');
