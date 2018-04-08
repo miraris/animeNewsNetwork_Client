@@ -36,7 +36,9 @@ class ANN_Client_Options {
 }
 
 class SeriesModel {
-  type:string;
+  groupType: string; //anime or manga
+  type:string; // groupType=anime then [special, anime, TV, omnibus, OAV, movie]; groupType=manga then [manga, magazine]
+  precision:string; // groupType=anime then [anime, TV, omnibus, OAV, movie]; groupType=manga then [manga, anthology, meta]
   _id: string;
   occurrence: number;
   title: string;
