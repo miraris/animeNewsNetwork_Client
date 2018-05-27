@@ -204,7 +204,9 @@ var ANN_Client = /** @class */ (function () {
                         language: $(eleT).attr('lang') || "",
                         title: $(eleT).text() || "",
                     };
-                    (seriesModel.episodes || []).push(episode);
+                    var arr = (seriesModel.episodes || []);
+                    arr.push(episode);
+                    seriesModel.episodes = arr;
                 });
             });
             seriesModels.push(seriesModel);

@@ -76,7 +76,13 @@ describe('Testing the ANN api client', function () {
                   throw new Error('alt title 0 was incorrect');
               if(res.alternativeTitles[1] !== "カードキャプターさくら クリアカード編")
                   throw new Error('alt title 1 was incorrect');
-
+              if(res.episodes.length !== 16)
+                  throw new Error('incorrect episode length');
+              let episode = res.episodes[0];
+              if(episode.language !== "EN")
+                  throw new Error('the correct language was not given');
+              if(episode.occurrence !== 1)
+                  throw new Error('the incorrect occurrence was given');
               done();
           });
       });

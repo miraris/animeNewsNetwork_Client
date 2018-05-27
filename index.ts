@@ -233,7 +233,9 @@ export class ANN_Client {
                         title: $(eleT).text() || "",
                     };
 
-                    (seriesModel.episodes || []).push(episode);
+                    let arr = (seriesModel.episodes || []);
+                    arr.push(episode);
+                    seriesModel.episodes = arr;
                 });
             });
 
