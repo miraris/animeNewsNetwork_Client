@@ -63,9 +63,22 @@ describe('Testing the ANN api client', function () {
                     throw new Error('_id was incorrect');
 
                 done();
-            }, err=>{
-                throw err;
             });
     });
+
+  it('it should return expected data for given title', function (done) {
+      let ops = {apiBackOff: 10, caching:false, groupTypeFilter:'anime'};
+      let ann = new ANN_Client(ops);
+      ann.findTitlesLike(['cardcaptor sakura: clear card'])
+          .subscribe((resp)=>{
+              let res= resp[0];
+              if(res.alternativeTitles[0] !== "cardcaptor sakura: clear card-hen")
+                  throw new Error('alt title 0 was incorrect');
+              if(res.alternativeTitles[1] !== "カードキャプターさくら クリアカード編")
+                  throw new Error('alt title 1 was incorrect');
+
+              done();
+          });
+      });
   });
 });
