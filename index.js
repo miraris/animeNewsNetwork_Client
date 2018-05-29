@@ -119,7 +119,7 @@ var ANN_Client = /** @class */ (function () {
     ANN_Client.prototype.findTitlesLike = function (titles, theashold) {
         var _this = this;
         if (theashold === void 0) { theashold = 0.80; }
-        var url = this.ops.urlDetails + 'title=~' + titles.join('titles=~');
+        var url = this.ops.urlDetails + 'title=~' + titles.join('&title=~');
         return this.requestApi(url)
             .map(function (xmlPage) {
             if (xmlPage.status === 200) {
@@ -128,7 +128,7 @@ var ANN_Client = /** @class */ (function () {
                     var probability = titles.map(function (title) {
                         return { title: title, similarity: _this.similarity(mod.title, title) };
                     }).sort(function (a, b) {
-                        return a.similarity - b.similarity;
+                        return b.similarity - a.similarity;
                     })[0] || { similarity: 0 };
                     return probability.similarity >= theashold;
                 });

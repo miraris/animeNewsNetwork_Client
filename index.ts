@@ -129,7 +129,7 @@ export class ANN_Client {
 
 
     public findTitlesLike(titles: string[], theashold: number = 0.80): Observable<any[]> {
-        let url = this.ops.urlDetails+'title=~'+titles.join('titles=~');
+        let url = this.ops.urlDetails+'title=~'+titles.join('&title=~');
         return this.requestApi(url)
             .map(xmlPage=>{
                 if(xmlPage.status === 200) {
@@ -138,7 +138,7 @@ export class ANN_Client {
                         let probability: any = titles.map(title=> {
                                 return {title: title, similarity: this.similarity(mod.title, title)};
                             }).sort((a, b)=> {
-                                return a.similarity - b.similarity;
+                                return b.similarity - a.similarity;
                             })[0] || {similarity: 0};
 
                         return probability.similarity >= theashold;

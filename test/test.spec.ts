@@ -2,6 +2,8 @@
 import {ANN_Client} from '../index';
 import {Observable} from "rxjs";
 
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 describe('Testing the ANN api client', function () {
   this.timeout(15000);
 
@@ -17,6 +19,7 @@ describe('Testing the ANN api client', function () {
 
       let start = Date.now();
       Observable.forkJoin(ar,br)
+        .take(1)
         .subscribe(gb=>{
           let end = Date.now();
           let good = gb[0];
@@ -39,6 +42,7 @@ describe('Testing the ANN api client', function () {
         let ops = {apiBackOff: 10, caching:false, groupTypeFilter:'anime'};
         let ann = new ANN_Client(ops);
         ann.findTitlesLike(['YU-NO: A girl who chants love at the bound of this world.'])
+            .take(1)
             .subscribe((resp)=>{
                 let res= resp[0];
                 if(res.alternativeTitles[0] !== "kono yo no hate de koi o utau shōjo yu-no")
@@ -70,6 +74,7 @@ describe('Testing the ANN api client', function () {
       let ops = {apiBackOff: 10, caching:false, groupTypeFilter:'anime'};
       let ann = new ANN_Client(ops);
       ann.findTitlesLike(['cardcaptor sakura: clear card'])
+          .take(1)
           .subscribe((resp)=>{
               let res= resp[0];
               if(res.alternativeTitles[0] !== "cardcaptor sakura: clear card-hen")
@@ -87,4 +92,28 @@ describe('Testing the ANN api client', function () {
           });
       });
   });
+
+    describe('Test multi title searching', function () {
+        it('it should return more data when searching for more titles', function (done) {
+            let ops = {apiBackOff: 10, caching:false, groupTypeFilter:'anime'};
+            let ann = new ANN_Client(ops);
+            let titles = [
+                'cardcaptor sakura: clear card',
+                'yu-no: a girl who chants love at the bound of this world.'];
+
+            ann.findTitlesLike(titles)
+                .take(1)
+                .subscribe((mResp)=>{
+                    let titlesFound = titles.filter(title=>{
+                        let found = mResp.reduce((p,c)=>{
+                            return p || (c.title.toLowerCase() === title);
+                        }, false);
+                        return found;
+                    });
+                    if(titlesFound.length !== titles.length)
+                        throw "all titles were not found in response from multi title return";
+                    done();
+                })
+        })
+    });
 });
