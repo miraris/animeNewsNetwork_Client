@@ -122,7 +122,8 @@ export class ANN_Client {
                 }).on('error', (error) => {
                     obs.next({status:500, data:error.message});
                     obs.complete();
-                })
+
+                }).setTimeout(5000);
             })
         }
     }

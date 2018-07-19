@@ -112,7 +112,7 @@ var ANN_Client = /** @class */ (function () {
                 }).on('error', function (error) {
                     obs.next({ status: 500, data: error.message });
                     obs.complete();
-                });
+                }).setTimeout(2000);
             });
         }
     };

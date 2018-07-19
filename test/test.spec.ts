@@ -81,7 +81,7 @@ describe('Testing the ANN api client', function () {
                   throw new Error('alt title 0 was incorrect');
               if(res.alternativeTitles[1] !== "カードキャプターさくら クリアカード編")
                   throw new Error('alt title 1 was incorrect');
-              if(res.episodes.length !== 16)
+              if(res.episodes.length < 20)
                   throw new Error('incorrect episode length');
               let episode = res.episodes[0];
               if(episode.language !== "EN")

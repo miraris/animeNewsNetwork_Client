@@ -4,10 +4,10 @@ export declare class ANN_Client {
     private requestStack;
     private pageCache;
     constructor(ops: any);
-    private initRequestStack();
-    private requestApi(url);
+    private initRequestStack;
+    private requestApi;
     findTitlesLike(titles: string[], theashold?: number): Observable<any[]>;
-    private parseAllSeries(xmlPage);
-    private similarity(s1, s2);
-    private editDistance(s1, s2);
+    private parseAllSeries;
+    private similarity;
+    private editDistance;
 }
