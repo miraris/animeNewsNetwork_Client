@@ -12,10 +12,8 @@ class ANN_Client_Options {
     groupTypeFilter = null;
 
     apiBackOff = 5;
-    // timeUntilTitleUpdate = 60 * 60 * 24;
 
     cacheing = true;
-    // cacheTimeout = 0;
 
     constructor(ops: any) {
         Object.assign(this, ops);
@@ -43,14 +41,12 @@ export class ANN_Client {
 
     private requestStack = new Subject<Subject<boolean>>();
     private pageCache: {[url:string] : string} = {} as any;
-    // private allTitles: {title: string} = {} as any;
 
     constructor(private ops: any){
         if(!(ops instanceof ANN_Client_Options))
             this.ops = new ANN_Client_Options(ops);
 
         this.initRequestStack();
-        // this.updateTitlesList();
     }
 
     private initRequestStack(){
@@ -181,7 +177,7 @@ export class ANN_Client {
 
             let occur = this.attribs['precision'];
             if (typeof occur !== 'undefined')
-                occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
+                occur = parseInt(occur.split("/")[0].replace(/[^0-9]/g, ''), 10);
             seriesModel.occurrence = occur || 1;
 
             seriesModel.title = $(ele).find('info[type="Main title"]').text();

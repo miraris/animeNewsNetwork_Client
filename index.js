@@ -4,13 +4,11 @@ var cheerio = require("cheerio");
 var rxjs_1 = require("rxjs");
 var https = require("https");
 var ANN_Client_Options = /** @class */ (function () {
-    // cacheTimeout = 0;
     function ANN_Client_Options(ops) {
         this.reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
         this.detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia/api.xml?';
         this.groupTypeFilter = null;
         this.apiBackOff = 5;
-        // timeUntilTitleUpdate = 60 * 60 * 24;
         this.cacheing = true;
         Object.assign(this, ops);
         if (!(this.groupTypeFilter === null || this.groupTypeFilter === "anime" || this.groupTypeFilter === "manga")) {
@@ -40,7 +38,6 @@ var ANN_Client_Options = /** @class */ (function () {
     return ANN_Client_Options;
 }());
 var ANN_Client = /** @class */ (function () {
-    // private allTitles: {title: string} = {} as any;
     function ANN_Client(ops) {
         this.ops = ops;
         this.requestStack = new rxjs_1.Subject();
@@ -48,7 +45,6 @@ var ANN_Client = /** @class */ (function () {
         if (!(ops instanceof ANN_Client_Options))
             this.ops = new ANN_Client_Options(ops);
         this.initRequestStack();
-        // this.updateTitlesList();
     }
     ANN_Client.prototype.initRequestStack = function () {
         rxjs_1.Observable.zip(rxjs_1.Observable.timer(0, this.ops.apiBackOff * 1000), this.requestStack)
@@ -112,7 +108,7 @@ var ANN_Client = /** @class */ (function () {
                 }).on('error', function (error) {
                     obs.next({ status: 500, data: error.message });
                     obs.complete();
-                }).setTimeout(2000);
+                }).setTimeout(5000);
             });
         }
     };
@@ -159,7 +155,7 @@ var ANN_Client = /** @class */ (function () {
             seriesModel.precision = this.attribs['precision'];
             var occur = this.attribs['precision'];
             if (typeof occur !== 'undefined')
-                occur = parseInt(occur.replace(/[^0-9]/g, ''), 10);
+                occur = parseInt(occur.split("/")[0].replace(/[^0-9]/g, ''), 10);
             seriesModel.occurrence = occur || 1;
             seriesModel.title = $(ele).find('info[type="Main title"]').text();
             var altT = $(ele).find('info[type="Alternative title"]')
