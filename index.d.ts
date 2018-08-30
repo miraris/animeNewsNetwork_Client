@@ -1,13 +1,12 @@
-import { Observable } from "rxjs";
 export declare class ANN_Client {
     private ops;
-    private requestStack;
-    private pageCache;
+    reportsUrl: string;
+    detailsUrl: string;
+    limiter: any;
     constructor(ops: any);
-    private initRequestStack;
     private requestApi;
-    findTitlesLike(titles: string[], theashold?: number): Observable<any[]>;
-    private parseAllSeries;
-    private similarity;
-    private editDistance;
+    findTitlesLike(titles: string[]): Promise<any>;
+    addDerivedValues(ann: any): void;
+    getMany(info: any, key: any, retKey?: string): any;
+    getSingle(info: any, key: any, retKey?: string): any;
 }
