@@ -20,37 +20,29 @@ let ops = {apiBackOff: 10, caching:false};
 ```typescript
 export class ANN_Client {
     
-    constructor(ops: ANN_Client_Options);
+    //default {apiBackOff: 10, useDerivedValues: true}
+    //back off uses 
+    //https://www.npmjs.com/package/bottleneck
+    constructor(private ops: {apiBackOff?: number, useDerivedValues?: boolean});
     
-    //list of titles to, I suggest doing one at at time thou,
-    //threashold cutoff, if the percent between the searched title and the title found 
-    // is not greater then the threashold then do not return the title.
-    // this paramter is optional and if not given defaults to 80%
-    findTitlesLike(titles: string[], theashold?: number): Observable<SeriesModel[]>; 
+    /*
+    return types are derived from 
+    https://www.npmjs.com/package/xml-js
+    
+    convert.xml2js(xmlPage, {compact: true, alwaysArray: true, trim: true, nativeType: true})
+    useDerivedValues = true; adds derived types, they can take a while as they are fetched from multiple calls
+    anime.d_genre: string[]
+    anime.d_mainTitle: string;
+    anime.d_plotSummary: string;
+    anime.d_episodes: {title: string, occurrence: number};
+    anime.d_series: number; // 1 or 2 or 3 .... for type anime.type === 'TV' (for now)
+     */
+    findTitlesLike(titles: string[]): Promise<any>; 
+    
+    findTitleWithId(id: string): Promise<any>;
+    
 }
 
-class ANN_Client_Options {
-    typeFilter:string; //anime | manga | null ; the filter the search result type
-    apiBackOff:number; //time that must elapse between each api call in seconds
-    cacheing:Boolean; //cache all api calls
-}
 
-class SeriesModel {
-  groupType: string; //anime or manga
-  type:string; // groupType=anime then [special, anime, TV, omnibus, OAV, movie]; groupType=manga then [manga, magazine]
-  precision:string; // groupType=anime then [anime, TV, omnibus, OAV, movie]; groupType=manga then [manga, anthology, meta]
-  _id: string;
-  occurrence: number;
-  title: string;
-  alternativeTitles: string;
-  [genre: string]:boolean; //for all genre types, ex: "adventure":true
-  summary: string;
-  dateReleased: string;
-  dateEnded: string;
-  episodes: {
-    occurrence: number,
-    language: string, //all language types in the API?
-    title: string,
-  }[];
-}
+
 ```

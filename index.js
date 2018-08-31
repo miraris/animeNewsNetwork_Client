@@ -3,36 +3,52 @@ Object.defineProperty(exports, "__esModule", { value: true });
 var convert = require("xml-js");
 var bottleneck_1 = require("bottleneck");
 var reqProm = require("request-promise");
+var internal_compatibility_1 = require("rxjs/internal-compatibility");
+var operators_1 = require("rxjs/operators");
+var rxjs_1 = require("rxjs");
 var ANN_Client = /** @class */ (function () {
     function ANN_Client(ops) {
         this.ops = ops;
         this.reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
         this.detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia//nodelay.api.xml?';
+        Object.assign(this.ops, { apiBackOff: 10, useDerivedValues: true }, ops);
         this.limiter = new bottleneck_1.default({
             maxConcurrent: 1,
-            minTime: (ops.apiBackOff || 10) * 1000
+            minTime: ops.apiBackOff * 1000
         });
     }
     ANN_Client.prototype.requestApi = function (url) {
-        return this.limiter.schedule(function () { return reqProm.get(url); });
+        var _this = this;
+        return rxjs_1.defer(function () { return internal_compatibility_1.fromPromise(request.call(_this, encodeURI(url))); }).pipe(operators_1.retry(5))
+            .toPromise()
+            .then(parse.bind(this));
+        function request(uri) {
+            return this.limiter.schedule(function () { return reqProm({
+                uri: uri
+            }); });
+        }
+        function parse(xmlPage) {
+            var ann = convert.xml2js(xmlPage, { compact: true, alwaysArray: true, trim: true, nativeType: true });
+            return ann;
+        }
+    };
+    ANN_Client.prototype.findTitleWithId = function (id) {
+        var _this = this;
+        if (!id)
+            return Promise.resolve({});
+        var url = this.detailsUrl + 'title=' + id;
+        var ret = this.requestApi(url);
+        if (this.ops.useDerivedValues)
+            return ret.then(function (ann) { return _this.addDerivedValues(ann.ann && ann.ann[0]); });
+        return ret;
     };
     ANN_Client.prototype.findTitlesLike = function (titles) {
         var _this = this;
         var url = this.detailsUrl + 'title=~' + titles.join('&title=~');
-        return this.requestApi(url)
-            .then(function (xmlPage) {
-            var ann = convert.xml2js(xmlPage, { compact: true, alwaysArray: true, trim: true, nativeType: true });
-            _this.addDerivedValues(ann.ann && ann.ann[0]);
-            return ann;
-        })
-            .catch(function (err) {
-            if (err.error.indexOf("We're terribly sorry but an unexpected error occured while accessing this page.") !== -1) {
-                if (_this.ops.debug)
-                    console.debug('no results found', url, titles);
-                return {};
-            }
-            throw err;
-        });
+        var ret = this.requestApi(url);
+        if (this.ops.useDerivedValues)
+            return ret.then(function (ann) { return _this.addDerivedValues(ann.ann && ann.ann[0]); });
+        return ret;
     };
     ANN_Client.prototype.addDerivedValues = function (ann) {
         var _this = this;
@@ -54,7 +70,19 @@ var ANN_Client = /** @class */ (function () {
                             return ret;
                         }) || [];
             });
+            return Promise.all(ann.anime.map(function (an) {
+                return _this.fetchSeries(an)
+                    .then(function (series) {
+                    if (series)
+                        an.d_series = series;
+                    return an;
+                });
+            })).then(function (anime) {
+                ann.anime = anime;
+                return ann;
+            });
         }
+        return Promise.resolve(ann);
     };
     ANN_Client.prototype.getMany = function (info, key, retKey) {
         if (retKey === void 0) { retKey = ''; }
@@ -67,6 +95,47 @@ var ANN_Client = /** @class */ (function () {
         var sing = info.filter(function (val) { return val._attributes && val._attributes.type === key; });
         if (sing.length && ((sing[0]._attributes && sing[0]._attributes[retKey]) || sing[0]['_text']))
             return sing[0]._attributes[retKey] || sing[0]['_text'][0];
+    };
+    ANN_Client.prototype.fetchSeries = function (anime) {
+        if (anime._attributes && anime._attributes.type)
+            switch (anime._attributes.type) {
+                case 'TV':
+                    return getSeriesFromTV.call(this, anime);
+            }
+        return Promise.resolve();
+        function getSeriesFromTV(anime) {
+            var _this = this;
+            var season = 1;
+            var id = getPrevId(anime);
+            return rxjs_1.defer(function () { return internal_compatibility_1.fromPromise(getAnimeById.call(_this, id)); }).pipe(operators_1.map(function (res) {
+                if (res && res.ann && res.ann[0].anime && res.ann[0].anime[0]) {
+                    ++season;
+                    anime = res.ann[0].anime[0];
+                    id = getPrevId(anime);
+                    if (id) {
+                        throw 'retry';
+                    }
+                }
+                return season;
+            }), operators_1.retryWhen(function (errors) {
+                return errors.pipe(operators_1.tap(function (err) {
+                    if (err !== 'retry')
+                        throw err;
+                }));
+            })).toPromise();
+            function getPrevId(anime) {
+                return anime && anime['related-prev'] &&
+                    anime['related-prev'][0]._attributes &&
+                    anime['related-prev'][0]._attributes.rel === 'sequel of' &&
+                    anime['related-prev'][0]._attributes.id;
+            }
+            function getAnimeById(id) {
+                if (!id)
+                    return Promise.resolve();
+                var url = this.detailsUrl + 'title=' + id;
+                return this.requestApi(url);
+            }
+        }
     };
     return ANN_Client;
 }());
