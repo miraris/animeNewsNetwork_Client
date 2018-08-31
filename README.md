@@ -9,7 +9,7 @@ A javascript parser for Anime News Network, it uses cheerio and is meant to run 
 
 # Example
 ```typescript
-let ops = {apiBackOff: 10, caching:false};
+let ops = {apiBackOff: 10};
       let ann = new ANN_Client(ops);
       let ar = ann.findTitlesLike(['good']);
 ```
