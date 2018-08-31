@@ -3,9 +3,9 @@
 A javascript parser for Anime News Network, it uses cheerio and is meant to run in a NodeJS environment
 
 # Dependencies
-1) Cheerio
-2) NodeJs
-3) RxJs
+1) NodeJs
+2) RxJs
+3) Bottelneck
 
 # Example
 ```typescript
