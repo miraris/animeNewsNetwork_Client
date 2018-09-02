@@ -68,6 +68,9 @@ export class ANN_Client {
           an.d_genre = this.getMany(an.info, 'Genres');
           an.d_mainTitle = this.getSingle(an.info, 'Main title');
           an.d_plotSummary = this.getSingle(an.info, 'Plot Summary');
+          let dr = this.getDateReleased(an.info);
+          if(dr)
+            an.d_dateReleased = dr;
         }
         if (an.episode)
           an.d_episodes = an.episode &&
@@ -78,19 +81,17 @@ export class ANN_Client {
               return ret;
             }) || [];
       });
-      return Promise.all(ann.anime.map(an=>{
-        return this.fetchSeries(an)
-          .then(series=>{
-            if(series)
-              an.d_series = series;
-            return an;
-          })
-      })).then(anime=>{
-        ann.anime = anime;
-        return ann;
-      })
     }
     return Promise.resolve(ann);
+  }
+
+  private getDateReleased(info): Date {
+    let permierDate: string[] = this.getMany(info, 'Premiere date');
+    let vintages: string[] = this.getMany(info, 'Vintage');
+    let date = vintages.concat(permierDate).map((text): any =>{
+      return (text.match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
+    }).sort((a,b)=>a-b)[0];
+    return date && new Date(date);
   }
 
   private getMany(info, key, retKey = ''){
@@ -99,56 +100,9 @@ export class ANN_Client {
       .map(gen=> (gen._attributes[retKey] || gen['_text'][0])) || [];
   }
 
-  private getSingle(info, key, retKey = ''){
+  private getSingle(info, key, retKey = '') {
     let sing = info.filter(val => val._attributes && val._attributes.type === key);
     if(sing.length && ((sing[0]._attributes && sing[0]._attributes[retKey]) || sing[0]['_text']))
       return sing[0]._attributes[retKey] || sing[0]['_text'][0];
-  }
-
-  private fetchSeries(anime) {
-    if (anime._attributes && anime._attributes.type)
-      switch (anime._attributes.type) {
-        case 'TV':
-          return getSeriesFromTV.call(this, anime);
-      }
-      return Promise.resolve();
-
-    function getSeriesFromTV(anime) {
-      let season = 1;
-      let id = getPrevId(anime);
-      return defer(() => fromPromise(getAnimeById.call(this,id))).pipe(
-        map((res: any) => {
-          if (res && res.ann && res.ann[0].anime && res.ann[0].anime[0]) {
-            ++season;
-            anime = res.ann[0].anime[0];
-            id = getPrevId(anime);
-            if(id) {
-              throw 'retry';
-            }
-          }
-          return season;
-        }),
-        retryWhen(errors =>{
-          return errors.pipe(tap(err=>{
-            if(err !== 'retry')
-              throw err;
-          }))
-        })).toPromise();
-
-      function getPrevId(anime) {
-        return anime && anime['related-prev'] &&
-          anime['related-prev'][0]._attributes &&
-          anime['related-prev'][0]._attributes.rel === 'sequel of' &&
-          anime['related-prev'][0]._attributes.id
-      }
-
-      function getAnimeById(id){
-        if(!id)
-          return Promise.resolve();
-
-        let url = this.detailsUrl + 'title='+id;
-        return this.requestApi(url);
-      }
-    }
   }
 }

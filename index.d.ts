@@ -11,7 +11,7 @@ export declare class ANN_Client {
     findTitleWithId(id: string): Promise<any>;
     findTitlesLike(titles: string[]): Promise<any>;
     private addDerivedValues;
+    private getDateReleased;
     private getMany;
     private getSingle;
-    private fetchSeries;
 }

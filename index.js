@@ -58,6 +58,9 @@ var ANN_Client = /** @class */ (function () {
                     an.d_genre = _this.getMany(an.info, 'Genres');
                     an.d_mainTitle = _this.getSingle(an.info, 'Main title');
                     an.d_plotSummary = _this.getSingle(an.info, 'Plot Summary');
+                    var dr = _this.getDateReleased(an.info);
+                    if (dr)
+                        an.d_dateReleased = dr;
                 }
                 if (an.episode)
                     an.d_episodes = an.episode &&
@@ -70,19 +73,16 @@ var ANN_Client = /** @class */ (function () {
                             return ret;
                         }) || [];
             });
-            return Promise.all(ann.anime.map(function (an) {
-                return _this.fetchSeries(an)
-                    .then(function (series) {
-                    if (series)
-                        an.d_series = series;
-                    return an;
-                });
-            })).then(function (anime) {
-                ann.anime = anime;
-                return ann;
-            });
         }
         return Promise.resolve(ann);
+    };
+    ANN_Client.prototype.getDateReleased = function (info) {
+        var permierDate = this.getMany(info, 'Premiere date');
+        var vintages = this.getMany(info, 'Vintage');
+        var date = vintages.concat(permierDate).map(function (text) {
+            return (text.match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
+        }).sort(function (a, b) { return a - b; })[0];
+        return date && new Date(date);
     };
     ANN_Client.prototype.getMany = function (info, key, retKey) {
         if (retKey === void 0) { retKey = ''; }
@@ -95,47 +95,6 @@ var ANN_Client = /** @class */ (function () {
         var sing = info.filter(function (val) { return val._attributes && val._attributes.type === key; });
         if (sing.length && ((sing[0]._attributes && sing[0]._attributes[retKey]) || sing[0]['_text']))
             return sing[0]._attributes[retKey] || sing[0]['_text'][0];
-    };
-    ANN_Client.prototype.fetchSeries = function (anime) {
-        if (anime._attributes && anime._attributes.type)
-            switch (anime._attributes.type) {
-                case 'TV':
-                    return getSeriesFromTV.call(this, anime);
-            }
-        return Promise.resolve();
-        function getSeriesFromTV(anime) {
-            var _this = this;
-            var season = 1;
-            var id = getPrevId(anime);
-            return rxjs_1.defer(function () { return internal_compatibility_1.fromPromise(getAnimeById.call(_this, id)); }).pipe(operators_1.map(function (res) {
-                if (res && res.ann && res.ann[0].anime && res.ann[0].anime[0]) {
-                    ++season;
-                    anime = res.ann[0].anime[0];
-                    id = getPrevId(anime);
-                    if (id) {
-                        throw 'retry';
-                    }
-                }
-                return season;
-            }), operators_1.retryWhen(function (errors) {
-                return errors.pipe(operators_1.tap(function (err) {
-                    if (err !== 'retry')
-                        throw err;
-                }));
-            })).toPromise();
-            function getPrevId(anime) {
-                return anime && anime['related-prev'] &&
-                    anime['related-prev'][0]._attributes &&
-                    anime['related-prev'][0]._attributes.rel === 'sequel of' &&
-                    anime['related-prev'][0]._attributes.id;
-            }
-            function getAnimeById(id) {
-                if (!id)
-                    return Promise.resolve();
-                var url = this.detailsUrl + 'title=' + id;
-                return this.requestApi(url);
-            }
-        }
     };
     return ANN_Client;
 }());
