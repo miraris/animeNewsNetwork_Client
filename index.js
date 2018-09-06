@@ -80,7 +80,7 @@ var ANN_Client = /** @class */ (function () {
         var permierDate = this.getMany(info, 'Premiere date');
         var vintages = this.getMany(info, 'Vintage');
         var date = vintages.concat(permierDate).map(function (text) {
-            return (text.match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
+            return (text.toString().match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
         }).sort(function (a, b) { return a - b; })[0];
         return date && new Date(date);
     };
