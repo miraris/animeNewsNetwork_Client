@@ -79,10 +79,13 @@ var ANN_Client = /** @class */ (function () {
     ANN_Client.prototype.getDateReleased = function (info) {
         var permierDate = this.getMany(info, 'Premiere date');
         var vintages = this.getMany(info, 'Vintage');
-        var date = vintages.concat(permierDate).map(function (text) {
-            return (text.toString().match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
-        }).sort(function (a, b) { return a - b; })[0];
-        return date && new Date(date);
+        return vintages.concat(permierDate)
+            .map(function (text) {
+            return (text.toString().match(/[0-9]{4}(?:-[0-9]{2}-[0-9]{2}){0,1}/) || [])[0];
+        })
+            .filter(function (val) { return !!val; })
+            .map(function (strDate) { return new Date(strDate); })
+            .sort(function (a, b) { return a - b; })[0];
     };
     ANN_Client.prototype.getMany = function (info, key, retKey) {
         if (retKey === void 0) { retKey = ''; }

@@ -46,11 +46,24 @@ describe('Testing the ANN API client', function () {
           //test anime
           expect(res.ratings[0]).to.have.nested.property('_attributes.bayesian_score');
           expect(res.d_genre).to.have.same.members(['adventure', 'comedy', 'magic']);
-          expect(res.d_mainTitle).to.eq('Cardcaptor Sakura: Clear Card')
-          expect(res.d_plotSummary).to.eq('Sakura and Syaoran are starting junior high school. With the Final Judgment passed, Sakura thinks school life will be quiet, but then all her cards suddenly turn blank. The mysterious new power she discovers will change how she thinks about her powers. <em class=de-emphasized>(from manga)</em>')
-          expect(res.d_dateReleased).to.equalDate(new Date('2018-01-07'))
-          expect(res.d_episodes).to.have.lengthOf(22)
+          expect(res.d_mainTitle).to.eq('Cardcaptor Sakura: Clear Card');
+          expect(res.d_plotSummary).to.eq('Sakura and Syaoran are starting junior high school. With the Final Judgment passed, Sakura thinks school life will be quiet, but then all her cards suddenly turn blank. The mysterious new power she discovers will change how she thinks about her powers. <em class=de-emphasized>(from manga)</em>');
+          expect(res.d_dateReleased).to['equalDate'](new Date('2018-01-07'));
+          expect(res.d_episodes).to.have.lengthOf(22);
 
+          done();
+        });
+    });
+
+    it('it should return correct vintages', function (done) {
+      Promise.all([
+          ann.findTitleWithId('6074'),
+          ann.findTitleWithId('4658'),
+          ann.findTitleWithId('13834')])
+        .then(([yearOnly, yearDayMonth, earliestYDM]) => {
+          expect(yearOnly.anime[0].d_dateReleased).to['equalDate'](new Date('1992-01-01'));
+          expect(yearDayMonth.anime[0].d_dateReleased).to['equalDate'](new Date('2005-01-05'));
+          expect(earliestYDM.anime[0].d_dateReleased).to['equalDate'](new Date('2012-04-03'));
           done();
         });
     });
@@ -71,7 +84,7 @@ describe('Testing the ANN API client', function () {
           )
         );
 
-        expect(titlesFound).to.not.have.lengthOf(titles);
+        expect(titlesFound).to.have.lengthOf(titles.length);
         done();
       });
     })
