@@ -88,8 +88,8 @@ export class ANN_Client {
   private getDateReleased(info): Date {
     let permierDate: string[] = this.getMany(info, 'Premiere date');
     let vintages: string[] = this.getMany(info, 'Vintage');
-    let date = vintages.concat(permierDate).map((text): any =>{
-      return (text.match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
+    let date = vintages.concat(permierDate).map((text): any => {
+      return (text.toString().match(/[0-9]{4}-[0-9]{2}-[0-9]{2}/) || [new Date().toDateString()])[0];
     }).sort((a,b)=>a-b)[0];
     return date && new Date(date);
   }

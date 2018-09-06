@@ -18,10 +18,13 @@
     "xml-js": "^1.6.7"
   },
   "devDependencies": {
+    "@types/chai": "^4.1.4",
     "@types/mocha": "^2.2.44",
     "@types/node": "^8.5.10",
     "@types/request": "^2.0.7",
     "@types/rx": "^4.1.1",
+    "chai": "^4.1.2",
+    "chai-datetime": "^1.5.0",
     "mkdirp": "^0.5.1",
     "mocha": "^4.0.1",
     "rewiremock": "^3.0.0",
