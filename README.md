@@ -33,7 +33,7 @@ export class ANN_Client {
           apiBackOff?: number,
     //should d_ values (calculated) be returned in response?
           useDerivedValues?: boolean,
-    //using your oqn request function, bypasses the request throttleing (apiBackOff)
+    //using your own request function, bypasses the request throttleing (apiBackOff)
           requestFn?: (url: string)=>Promise<string>
         });
     
