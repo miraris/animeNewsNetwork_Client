@@ -10,7 +10,7 @@ var ANN_Client = /** @class */ (function () {
     function ANN_Client(ops) {
         this.ops = ops;
         this.reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
-        this.detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia//nodelay.api.xml?';
+        this.detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia/nodelay.api.xml?';
         Object.assign(this.ops, { apiBackOff: 10, useDerivedValues: true }, ops);
         this.limiter = new bottleneck_1.default({
             maxConcurrent: 1,
@@ -19,12 +19,12 @@ var ANN_Client = /** @class */ (function () {
     }
     ANN_Client.prototype.requestApi = function (url) {
         var _this = this;
-        return rxjs_1.defer(function () { return internal_compatibility_1.fromPromise(request.call(_this, encodeURI(url))); }).pipe(operators_1.retry(5))
+        return rxjs_1.defer(function () { return internal_compatibility_1.fromPromise((_this.ops.requestFn && _this.ops.requestFn(url)) || request.call(_this, url)); }).pipe(operators_1.retry(5))
             .toPromise()
             .then(parse.bind(this));
         function request(uri) {
             return this.limiter.schedule(function () { return reqProm({
-                uri: uri
+                uri: encodeURI(uri)
             }); });
         }
         function parse(xmlPage) {

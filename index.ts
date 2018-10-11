@@ -2,19 +2,26 @@ import * as convert from 'xml-js';
 import Bottleneck from "bottleneck"
 import * as reqProm from 'request-promise';
 import {fromPromise} from "rxjs/internal-compatibility";
-import {map, retry, retryWhen, tap} from "rxjs/operators";
+import {retry} from "rxjs/operators";
 import {defer} from "rxjs";
 
 export class ANN_Client {
 
   private reportsUrl = 'https://www.animenewsnetwork.com/encyclopedia/reports.xml?';
-  private detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia//nodelay.api.xml?';
+  private detailsUrl = 'https://cdn.animenewsnetwork.com/encyclopedia/nodelay.api.xml?';
 
   private limiter;
 
-  constructor(private ops: { apiBackOff?: number, useDerivedValues?: boolean }) {
+  constructor(private ops: {
+    apiBackOff?: number,
+    useDerivedValues?: boolean,
+    requestFn?: (url: string)=>Promise<string>
+  }) {
 
-    Object.assign(this.ops, {apiBackOff: 10, useDerivedValues: true}, ops);
+    Object.assign(
+      this.ops,
+      {apiBackOff: 10, useDerivedValues: true},
+      ops);
     this.limiter = new Bottleneck({
       maxConcurrent: 1,
       minTime: ops.apiBackOff * 1000
@@ -24,14 +31,16 @@ export class ANN_Client {
 
   private requestApi(url): Promise<any> {
 
-    return defer(() => fromPromise(request.call(this, encodeURI(url)))).pipe(
+    return defer(() => fromPromise(
+      (this.ops.requestFn && this.ops.requestFn(url)) || request.call(this, url)
+    )).pipe(
       retry(5))
       .toPromise()
       .then(parse.bind(this));
 
     function request(uri) {
       return this.limiter.schedule(() => reqProm({
-        uri
+        uri: encodeURI(uri)
       }))
     }
 
