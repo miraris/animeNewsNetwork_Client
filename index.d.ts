@@ -1,4 +1,4 @@
-export declare class ANN_Client {
+export declare class ANNClient {
     private ops;
     private reportsUrl;
     private detailsUrl;

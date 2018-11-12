@@ -1,22 +1,14 @@
 {
   "compilerOptions": {
-    "alwaysStrict":true,
-    "declaration":true,
-    "moduleResolution":"Node",
+    "alwaysStrict": true,
+    "declaration": true,
+    "moduleResolution": "Node",
     "sourceMap": true,
     "target": "es5",
-    "pretty":true,
+    "pretty": true,
     "skipLibCheck": true,
-    "lib": [
-      "es6",
-      "es5"
-    ]
+    "lib": ["es6", "es5"]
   },
-  "include": [
-    "index.ts",
-    "test/**/*"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["index.ts", "test/**/*"],
+  "exclude": ["node_modules"]
 }
